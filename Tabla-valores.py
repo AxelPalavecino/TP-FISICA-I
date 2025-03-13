@@ -240,6 +240,119 @@ def generar_grafico_masa_diametro(archivos, output_image="grafico_combinado.png"
     plt.close()
     print(f"Gráfico guardado en {output_image}")
 
+def generar_grafico_ley_escala(archivos, output_image="grafico_ley_escala.png", figsize=(8,5)):
+    """
+    Genera un gráfico para comparar la Ley de Escala:
+
+       D = k · M^alpha
+
+    Se realiza un ajuste lineal en escala logarítmica:
+       log(D) = log(k) + alpha * log(M)
+
+    Se grafican los datos originales (con barras de error) y la recta de ajuste.
+    """
+    df_list = [pd.read_csv(a) for a in archivos]
+    df_combined = pd.concat(df_list, ignore_index=True)
+    df_combined = df_combined.round(3)
+    
+    masa = df_combined["Masa [g]"]
+    inc_masa = df_combined["Insertidumbre Masa [g]"]
+    diametro = df_combined["Promedio Diametro [mm]"]
+    inc_diametro = df_combined["Insertidumbre Diametro [mm]"]
+
+    plt.style.use("seaborn-darkgrid")
+    fig, ax = plt.subplots(figsize=figsize)
+    
+    # Graficar datos con barras de error
+    ax.errorbar(
+        masa, diametro,
+        xerr=inc_masa, yerr=inc_diametro,
+        fmt="o", markersize=6, markerfacecolor="white", markeredgecolor="black",
+        ecolor="black", elinewidth=1.5, capsize=5, label="Datos",
+        alpha=0.8, zorder=2
+    )
+    
+    # Ajuste lineal sobre los logaritmos
+    log_masa = np.log(masa)
+    log_diametro = np.log(diametro)
+    slope, intercept = np.polyfit(log_masa, log_diametro, 1)
+    alpha = slope           # Exponente
+    k = np.exp(intercept)     # k = exp(intercept)
+
+    # Generación de la recta ajustada en el espacio original
+    masa_fit = np.linspace(masa.min(), masa.max(), 200)
+    diametro_fit = k * masa_fit ** alpha
+    ax.plot(masa_fit, diametro_fit, color="red", linestyle="--", linewidth=2,
+            label=f"Ajuste: D = {k:.2f}·M^{alpha:.2f}", zorder=1)
+    
+    ax.set_xlabel("Masa [g]", fontsize=12)
+    ax.set_ylabel("Promedio Diametro [mm]", fontsize=12)
+    ax.set_title("Ajuste Ley de Escala: D = k · M^alpha", fontsize=14)
+    ax.legend(fontsize=10)
+    ax.grid(True, linestyle="--", alpha=0.7)
+    
+    plt.tight_layout()
+    plt.savefig(output_image, dpi=200)
+    plt.close()
+    print(f"Gráfico ley de escala guardado en {output_image}")
+
+def generar_grafico_ley_escala_loglog(archivos, output_image="grafico_ley_escala_loglog.png", figsize=(8,5)):
+    """
+    Genera un gráfico en escala logarítmica en ambos ejes para comparar la Ley de Escala:
+    
+       log(D) = log(k) + alpha * log(M)
+       
+    Aquí, b = log(k) y alpha conserva su valor. Se grafican los datos (con error) y la recta de ajuste.
+    """
+    df_list = [pd.read_csv(a) for a in archivos]
+    df_combined = pd.concat(df_list, ignore_index=True).round(3)
+    
+    masa = df_combined["Masa [g]"]
+    diametro = df_combined["Promedio Diametro [mm]"]
+    inc_masa = df_combined["Insertidumbre Masa [g]"]
+    inc_diametro = df_combined["Insertidumbre Diametro [mm]"]
+
+    plt.style.use("seaborn-darkgrid")
+    fig, ax = plt.subplots(figsize=figsize)
+    
+    # Graficar los datos con barras de error (en coordenadas originales)
+    ax.errorbar(
+        masa, diametro,
+        xerr=inc_masa, yerr=inc_diametro,
+        fmt="o", markersize=6, markerfacecolor="white", markeredgecolor="black",
+        ecolor="black", elinewidth=1.5, capsize=5, label="Datos",
+        alpha=0.8, zorder=2
+    )
+    
+    # Ajuste lineal sobre los logaritmos
+    log_masa = np.log(masa)
+    log_diametro = np.log(diametro)
+    slope, intercept = np.polyfit(log_masa, log_diametro, 1)
+    alpha_val = slope
+    b = intercept  # b = log(k)
+    
+    # Generación de la recta ajustada en el espacio original: D = exp(b)*M^alpha
+    masa_fit = np.linspace(masa.min(), masa.max(), 200)
+    diametro_fit = np.exp(b) * masa_fit**alpha_val
+    ax.plot(masa_fit, diametro_fit, color="red", linestyle="--", linewidth=2,
+            label=f"Fit: log(D) = {b:.2f} + {alpha_val:.2f}·log(M)", zorder=1)
+    
+    # Configurar ambos ejes en escala logarítmica
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    
+    ax.set_xlabel("Masa [g]", fontsize=12)
+    ax.set_ylabel("Promedio Diametro [mm]", fontsize=12)
+    ax.set_title("Ajuste Ley de Escala en escala Log-Log", fontsize=14)
+    ax.legend(fontsize=10)
+    ax.grid(True, which="both", linestyle="--", alpha=0.7)
+    
+    plt.tight_layout()
+    plt.savefig(output_image, dpi=200)
+    plt.close()
+    print(f"Gráfico ley de escala log-log guardado en {output_image}")
 
 if __name__ == "__main__":
     generar_grafico_masa_diametro(["datos_papel_1.csv", "datos_papel_2.csv", "datos_papel_3.csv"])
+    generar_grafico_ley_escala(["datos_papel_1.csv", "datos_papel_2.csv", "datos_papel_3.csv"])
+    generar_grafico_ley_escala_loglog(["datos_papel_1.csv", "datos_papel_2.csv", "datos_papel_3.csv"])
